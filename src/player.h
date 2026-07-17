@@ -1,23 +1,20 @@
 //Information for the player and all the things you can do to the player
 //definition for the player
 
+#pragma once
 #include <SDL2/SDL.h>
+#include <stdbool.h>
 
-const int PLAYER_SIZE_W = 20;
-const int PLAYER_SIZE_H = 30;
-
-const int PLAYER_SPEED = 5;
 
 typedef struct Player {
-        int xPos;
-        int yPos;
+        float xPos;
+        float yPos;
         int health;
         SDL_Rect body;
 } Player;
 
-void xDirectionMove(int x, &Player p);
-void yDirectionMove(int y, &Player p);
-void xyDirectionMove(int x, int y, &Player p);
-bool healthDecrease(int h, &Player p);
-void healthIncrease(int h, &Player p);
-void setPosition(int x, int y, &Player p);
+void xDirectionMove(Player *p, bool positive, float delta);
+void yDirectionMove(Player *p, bool positive, float delta);
+void xyDirectionMove(Player *p, bool posX, bool posY);
+bool healthDecrease(Player *p, int h);
+void healthIncrease(Player *p, int h);

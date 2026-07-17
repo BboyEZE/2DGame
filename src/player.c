@@ -1,27 +1,29 @@
-#include "player.h";
+#include "player.h"
 
-//adjust the position of the physical player body
-
-void adjustPlayerBody(p){
+void adjustPlayerBody(Player *p){
     p->body.x = p->xPos;
     p->body.y = p->yPos;
 }
 
-void xDirectionMove(x, p){
-     p->xPos += x;
+void xDirectionMove(Player *p, bool positive, float delta){
+    int i = 1;
+    if(!positive) { i = -1; }
+     p->xPos += delta * i;
      adjustPlayerBody(p);
 }
 
-void yDirectionMove(x, p){
-    p->yPos += y;
+void yDirectionMove(Player *p, bool positive, float delta){
+    int i = 1;
+    if(!positive) { i = -1; }
+    p->yPos += delta * i;
     adjustPlayerBody(p);
 }
 
-void increaseHealth(h, p){
+void increaseHealth(Player *p, int h){
     p->health += h;
 }
 
-bool decreaseHealth(h, p){
+bool decreaseHealth(Player *p, int h){
     p->health -= h;
     if(p->health <= 0) { return false; }
     return true;
