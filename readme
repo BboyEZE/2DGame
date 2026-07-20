@@ -1,0 +1,30 @@
+Welcome to the 2DGame in C. A learning experince for an unexpereinced dev
+
+Here are notes for myself for how to setup the game. 
+
+1) launch mysys ucrt64 
+2) cd into the game folder
+3) compile the game using a call like -- gcc src/main.c src/player.c -o game.exe $(pkg-config --cflags --libs sdl2)
+    - note: The compile call is gcc {each .c file with the exact location path} -o (output) {output name}
+4) run the game by doing ./game.exe
+
+
+
+
+where to find SDL2 libraries and information ofline.
+1) finding the location
+MSYS2 UCRT64 command to find the location:
+$ pkg-config --cflags sdl2 
+    - uses pkg-config to ask where the files are located
+
+$ ls /ucrt64/include/SDL2 
+    - shows all of the header files within there that you can use in #include and give you their information
+
+2) searching for specfic headers
+
+$ grep -rn "SDL_Event" /ucrt64/include/SDL2 | head -40
+$ grep -rln "SDL_Events;" /ucrt64/include/SDL2
+
+3) reading it 
+$ less /ucrt64/include/SDL2/SDL_events.h
+    * within less you can use the search box to query for the location you are looking for

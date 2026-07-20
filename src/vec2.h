@@ -10,3 +10,5 @@ typedef struct Vec2 {
 } Vec2;
 
 Vec2 getProjectileDeltaDistance(float playerX, float playerY, int mouseX, int mouseY);
+
+Vec2 normalizeVecotor(Vec2 original);

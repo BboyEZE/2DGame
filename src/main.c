@@ -10,6 +10,7 @@
 
 #include "player.h"
 #include "projectile.h"
+#include "vec2.h"
 
 Uint32 lastTime = 0;
 
@@ -21,20 +22,27 @@ Uint32 lastTime = 0;
 #define PLAYER_SPEED 300
 
 /* PROJECTILE CONSTANTS */
-#define PROJECTILE_SPEED 800
+#define PROJECTILE_SPEED 1000
 // possible limit to the number of bullets
 #define MAX_SHOTS 20
+
 // miliseconds until next shot
 #define FIRE_INTERVAL 250
+
 #define PROJECTILE_SIZE_W 10
 #define PROJECTILE_SIZE_H 10
 
+/* WINDOW CONSTANTS*/
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 
+// Projectile list and count for number of projectiles
 Projectile projectiles[MAX_SHOTS];
+
 int projectileCount = 0;
 
+float shotInterval = 0;
+float shootingSpeed = 0;
 
 
 //helper functions
@@ -42,6 +50,10 @@ void keyDownEvent(const Uint8 *keyState, Player *p, float delta);
 void setPlayerPhysicalPosition(Player *p);
 
 float getDelta();
+
+bool canShootProjectile(float delta);
+
+Projectile fireProjectile(Player *p, int mouseX, int mouseY);
 
 int main(int argc, char *argv[]){
     int SDLInitSuccess = SDL_Init(SDL_INIT_VIDEO);
@@ -67,12 +79,19 @@ int main(int argc, char *argv[]){
     int running = 1;
     SDL_Event e;
 
+    //make the player
     Player p1 = {.xPos = 300,  .yPos= 400, .health = 100, .body = { 300, 400, PLAYER_SIZE_W, PLAYER_SIZE_H }};
 
     // buffer to ensure print statements occur immediately.
     setvbuf(stdout, NULL, _IONBF, 0);
 
+    shootingSpeed = .2;
+
     while (running) {
+
+        // temporary settings for first initial game creation. Will be adjusted later on to be larger that the actual window.
+        int levelWidth = WINDOW_WIDTH;
+        int levelHeight = WINDOW_HEIGHT;
         while(SDL_PollEvent(&e)){
             switch (e.type) {
                 case SDL_QUIT:
@@ -83,6 +102,9 @@ int main(int argc, char *argv[]){
         //time passed between each frame. Used for all movements
         float delta = getDelta();
 
+        // decrement shot interval so the system ALWAYS knows if the user can shoot.
+        if(shotInterval > 0) { shotInterval -= delta; }
+
         //player movement
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
         keyDownEvent(keyState, &p1, delta);
@@ -91,16 +113,15 @@ int main(int argc, char *argv[]){
         int mouseX; int mouseY;
         Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
 
-        if( (mouseState & SDL_BUTTON_LMASK) && projectileCount < MAX_SHOTS){
-            Projectile newProjectile = { p1.xPos, p1.yPos, PROJECTILE_SPEED, 0, 0};
-            getDeltaMousePosition(&p1, mouseX, mouseY, &newProjectile);
+        if( (mouseState & SDL_BUTTON_LMASK) && projectileCount < MAX_SHOTS && canShootProjectile(delta)){
+            Projectile newProjectile = fireProjectile(&p1, mouseX, mouseY);
             projectiles[projectileCount] = newProjectile;
             projectileCount++;    
         }
 
         int i = 0;
         while(i<projectileCount){
-            bool projectileAlive = moveProjectile(&projectiles[i], delta);
+            bool projectileAlive = moveProjectile(&projectiles[i], delta, levelWidth, levelHeight, PROJECTILE_SPEED);
             if(projectileAlive){
                 i++;
                 continue;
@@ -110,9 +131,18 @@ int main(int argc, char *argv[]){
         }
 
         SDL_RenderClear(renderer);
+
+        SDL_SetRenderDrawColor(renderer, 128, 233, 91, 255);
+        for(int i = 0; i < projectileCount; i++){
+            SDL_RenderFillRect(renderer, &projectiles[i].body);
+        }
+        
+        // render the player body
         SDL_SetRenderDrawColor(renderer, 155,155,0,255);
         setPlayerPhysicalPosition(&p1);
         SDL_RenderFillRect(renderer, &p1.body);
+
+        // render the screen
         SDL_SetRenderDrawColor(renderer, 0,0,0,255);
         SDL_RenderPresent(renderer);
     }
@@ -129,13 +159,20 @@ void keyDownEvent(const Uint8 *keyState, Player *p, float delta){
 
 }
 
-void fireProjectileEvent(Player* p){
+// creation of a new projectile for firing.
+Projectile fireProjectile(Player* p, int mouseX, int mouseY){
+    Vec2 projectileVector = getProjectileDeltaDistance(p->xPos, p->yPos, mouseX, mouseY);
     Projectile shot = {
         p->xPos,
         p->yPos,
         PROJECTILE_SPEED,
-        {p->xPos, p->yPos, PROJECTILE_SIZE_W, PROJECTILE_SIZE_H},
+        .xAimDirection = projectileVector.x,
+        .yAimDirection = projectileVector.y,
+        .body = {0, 0, PROJECTILE_SIZE_W, PROJECTILE_SIZE_H},
+        .lifetime = 10,
     };
+
+    return shot;
 }
 
 void setPlayerPhysicalPosition(Player *p){
@@ -151,4 +188,13 @@ float getDelta(){
     float delta = (now - lastTime) / 1000.0;
     lastTime = now;
     return delta;
+    fprintf(stdout, "Current delta: ",delta);
+}
+
+bool canShootProjectile(float delta){
+    if(shotInterval <= 0){
+        shotInterval = shootingSpeed;
+        return true;
+    }
+    else return false;
 }
