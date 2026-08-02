@@ -2,11 +2,20 @@
 #include "vec2.h"
 #include "camera.h"
 
-void cameraFollowUser(Camera* camera, Player* player, const int WORLD_MAX_WIDTH, const int WORLD_MAX_HEIGHT){
-    const int cameraXCenter = camera->window_width / 2;
-    const int cemeraYCetner = camera->window_height / 2;
+void updateCamera(Camera* camera, Player* player, const int worldW, const int worldH){
+    camera->x = player->xPos - camera->window_width / 2;
+    camera->y = player->yPos - camera->window_height / 2;
+    cameraAdjustWorld(camera, worldW, worldH);
 }
 
-Vec2 cameraAdjustWorld(Camera* camera, const int WORLD_MAX_WIDTH, const int WOLRD_MAX_HEIGHT){
+void cameraAdjustWorld(Camera* camera, const int worldW, const int worldH){
+    int maxX = worldW - camera->window_width;
+    int maxY = worldH - camera->window_height;
 
+    if(camera->x < 0) { camera->x = 0; }
+    else if(camera->x > maxX) { camera->x = maxX; }
+
+    if(camera->y < 0) { camera->y = 0; }
+    else if(camera->y > maxY) { camera->y = maxY; }
 }
+

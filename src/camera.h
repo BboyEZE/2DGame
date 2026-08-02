@@ -10,6 +10,6 @@ typedef struct Camera {
     int window_height; // adjusted window height
 } Camera;
 
-void moveCamera(Camera* camera, Player* player);
+void updateCamera(Camera* camera, Player* player, const int worldW, const int worldH);
 
-Vec2 cameraAdjustWorld(Camera* camera, const int WORLD_MAX_WIDTH, const int WOLRD_MAX_HEIGHT);
+void cameraAdjustWorld(Camera* camera, const int WORLD_MAX_WIDTH, const int WOLRD_MAX_HEIGHT);

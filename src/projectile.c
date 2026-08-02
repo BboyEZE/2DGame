@@ -15,8 +15,6 @@ bool moveProjectile(Projectile *p, float deltaTime, int widthMax, int heightMax,
     p->lifetime -= deltaTime;
     p-> xPos += p->xAimDirection * deltaTime * speed;
     p-> yPos += p->yAimDirection * deltaTime * speed;
-    p->body.x = p->xPos;
-    p->body.y = p->yPos;
     if(p->xPos <= 0 || p->xPos >= widthMax || p->yPos <= 0 || p->yPos >= heightMax || p->lifetime <= 0){ return false; }
     return true;
 }

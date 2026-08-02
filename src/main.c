@@ -11,6 +11,8 @@
 #include "player.h"
 #include "projectile.h"
 #include "vec2.h"
+#include "camera.h"
+#include "world.h"
 
 Uint32 lastTime = 0;
 
@@ -47,7 +49,7 @@ float shootingSpeed = 0;
 
 //helper functions
 void keyDownEvent(const Uint8 *keyState, Player *p, float delta);
-void setPlayerPhysicalPosition(Player *p);
+void setPlayerPhysicalPosition(Player *p, Camera* cam);
 
 float getDelta();
 
@@ -76,11 +78,16 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    int running = 1;
-    SDL_Event e;
+    int levelWidth = 3000;
+    int levelHeight = 2000;
 
     //make the player
-    Player p1 = {.xPos = 300,  .yPos= 400, .health = 100, .body = { 300, 400, PLAYER_SIZE_W, PLAYER_SIZE_H }};
+    Player p1 = {.xPos = levelWidth/2,  .yPos= levelHeight/2, .health = 100, .body = { levelWidth/2, levelHeight/2, PLAYER_SIZE_W, PLAYER_SIZE_H }};
+    Camera cam = { .x=0, .y=0, .window_width = WINDOW_WIDTH, .window_height = WINDOW_HEIGHT };
+      
+
+    int running = 1;
+    SDL_Event e;
 
     // buffer to ensure print statements occur immediately.
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -88,10 +95,10 @@ int main(int argc, char *argv[]){
     shootingSpeed = .2;
 
     while (running) {
-
+        
+        
         // temporary settings for first initial game creation. Will be adjusted later on to be larger that the actual window.
-        int levelWidth = WINDOW_WIDTH;
-        int levelHeight = WINDOW_HEIGHT;
+
         while(SDL_PollEvent(&e)){
             switch (e.type) {
                 case SDL_QUIT:
@@ -109,12 +116,17 @@ int main(int argc, char *argv[]){
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
         keyDownEvent(keyState, &p1, delta);
 
+        //adjust the camera 
+        updateCamera(&cam, &p1, levelWidth, levelHeight);
+
         //projectile movement
         int mouseX; int mouseY;
         Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
 
         if( (mouseState & SDL_BUTTON_LMASK) && projectileCount < MAX_SHOTS && canShootProjectile(delta)){
-            Projectile newProjectile = fireProjectile(&p1, mouseX, mouseY);
+            int mouseWorldX = cam.x + mouseX;
+            int mouseWorldY = cam.y + mouseY;
+            Projectile newProjectile = fireProjectile(&p1, mouseWorldX, mouseWorldY);
             projectiles[projectileCount] = newProjectile;
             projectileCount++;    
         }
@@ -134,12 +146,14 @@ int main(int argc, char *argv[]){
 
         SDL_SetRenderDrawColor(renderer, 128, 233, 91, 255);
         for(int i = 0; i < projectileCount; i++){
+            projectiles[i].body.x = projectiles[i].xPos - cam.x;
+            projectiles[i].body.y = projectiles[i].yPos - cam.y;
             SDL_RenderFillRect(renderer, &projectiles[i].body);
         }
         
         // render the player body
         SDL_SetRenderDrawColor(renderer, 155,155,0,255);
-        setPlayerPhysicalPosition(&p1);
+        setPlayerPhysicalPosition(&p1, &cam);
         SDL_RenderFillRect(renderer, &p1.body);
 
         // render the screen
@@ -171,13 +185,12 @@ Projectile fireProjectile(Player* p, int mouseX, int mouseY){
         .body = {0, 0, PROJECTILE_SIZE_W, PROJECTILE_SIZE_H},
         .lifetime = 10,
     };
-
     return shot;
 }
 
-void setPlayerPhysicalPosition(Player *p){
-    p->body.x = p->xPos;
-    p->body.y = p->yPos;
+void setPlayerPhysicalPosition(Player *p, Camera *cam){
+    p->body.x = p->xPos - cam->x;
+    p->body.y = p->yPos - cam->y;
 }
 
 //float helpers
