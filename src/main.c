@@ -7,6 +7,7 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "player.h"
 #include "projectile.h"
@@ -37,7 +38,6 @@ Uint32 lastTime = 0;
 /* WINDOW CONSTANTS*/
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-
 // Projectile list and count for number of projectiles
 Projectile projectiles[MAX_SHOTS];
 
@@ -45,7 +45,6 @@ int projectileCount = 0;
 
 float shotInterval = 0;
 float shootingSpeed = 0;
-
 
 //helper functions
 void keyDownEvent(const Uint8 *keyState, Player *p, float delta);
@@ -78,16 +77,17 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    int levelWidth = 3000;
-    int levelHeight = 2000;
-
-    //make the player
-    Player p1 = {.xPos = levelWidth/2,  .yPos= levelHeight/2, .health = 100, .body = { levelWidth/2, levelHeight/2, PLAYER_SIZE_W, PLAYER_SIZE_H }};
-    Camera cam = { .x=0, .y=0, .window_width = WINDOW_WIDTH, .window_height = WINDOW_HEIGHT };
-      
+    srand(time(NULL));
+    // make the forest world
+    generateForest(&forest, 64);
 
     int running = 1;
     SDL_Event e;
+
+    //make the player
+    Player p1 = {.xPos = forest.width/2,  .yPos= forest.height/2, .health = 100, .body = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H }};
+    Camera cam = { .x=0, .y=0, .window_width = WINDOW_WIDTH, .window_height = WINDOW_HEIGHT };
+
 
     // buffer to ensure print statements occur immediately.
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]){
     shootingSpeed = .2;
 
     while (running) {
-        
+        World *world = &forest;
         
         // temporary settings for first initial game creation. Will be adjusted later on to be larger that the actual window.
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]){
         keyDownEvent(keyState, &p1, delta);
 
         //adjust the camera 
-        updateCamera(&cam, &p1, levelWidth, levelHeight);
+        updateCamera(&cam, &p1, world->width, world->height);
 
         //projectile movement
         int mouseX; int mouseY;
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]){
 
         int i = 0;
         while(i<projectileCount){
-            bool projectileAlive = moveProjectile(&projectiles[i], delta, levelWidth, levelHeight, PROJECTILE_SPEED);
+            bool projectileAlive = moveProjectile(&projectiles[i], delta, world->width, world->height, PROJECTILE_SPEED);
             if(projectileAlive){
                 i++;
                 continue;
@@ -143,6 +143,8 @@ int main(int argc, char *argv[]){
         }
 
         SDL_RenderClear(renderer);
+
+        renderWorld(world, &cam, renderer);
 
         SDL_SetRenderDrawColor(renderer, 128, 233, 91, 255);
         for(int i = 0; i < projectileCount; i++){
@@ -154,12 +156,15 @@ int main(int argc, char *argv[]){
         // render the player body
         SDL_SetRenderDrawColor(renderer, 155,155,0,255);
         setPlayerPhysicalPosition(&p1, &cam);
+        clampPlayerToWorld(&p1, world);
         SDL_RenderFillRect(renderer, &p1.body);
 
         // render the screen
         SDL_SetRenderDrawColor(renderer, 0,0,0,255);
         SDL_RenderPresent(renderer);
     }
+    destoryForest(&forest);
+
     return 1;
 }
 

@@ -16,5 +16,7 @@ typedef struct Player {
 void xDirectionMove(Player *p, bool positive, float delta);
 void yDirectionMove(Player *p, bool positive, float delta);
 void xyDirectionMove(Player *p, bool posX, bool posY);
-bool healthDecrease(Player *p, int h);
 void healthIncrease(Player *p, int h);
+
+
+bool healthDecrease(Player *p, int h);
