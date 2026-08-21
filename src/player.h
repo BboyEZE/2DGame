@@ -11,12 +11,12 @@ typedef struct Player {
         float yPos;
         int health;
         SDL_Rect body;
+        SDL_Texture *pBodyImage;
 } Player;
 
 void xDirectionMove(Player *p, bool positive, float delta);
 void yDirectionMove(Player *p, bool positive, float delta);
 void xyDirectionMove(Player *p, bool posX, bool posY);
+
 void healthIncrease(Player *p, int h);
-
-
 bool healthDecrease(Player *p, int h);

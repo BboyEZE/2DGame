@@ -64,20 +64,55 @@ don't write. If a request is ambiguous, assume he wants guidance, not code.
 
 ## Project facts & conventions (fill in as we go)
 
-- Toolchain: MSYS2 **UCRT64** environment. gcc 16.1.0, SDL2 + SDL2_image +
-  pkgconf installed via pacman. ALWAYS work in the UCRT64 terminal.
-- Build command (run from project root in UCRT64): _proposed_
-  `gcc src/main.c -o game.exe $(pkg-config --cflags --libs sdl2)`
-  — confirm/record once Milestone 1 compiles.
+- Toolchain: MSYS2 **UCRT64** environment. gcc 16.1.0, SDL2 2.32.10 + pkgconf
+  installed via pacman. ALWAYS work in the UCRT64 terminal.
+  SDL2_image **2.8.12 is installed and verified** as of 2026-08-11 (the 2026-08-07
+  attempt died partway and left a stale `/var/lib/pacman/db.lck`, which blocked
+  every later pacman run — if pacman says "unable to lock database" and no pacman
+  is running, delete that file).
+- Build command (run from project root in UCRT64) — **CONFIRMED WORKING 2026-08-11**:
+  `gcc -Wall src/*.c -o game.exe $(pkg-config --cflags --libs sdl2 sdl2_image)`
+  Note `src/*.c`, NOT `src/main.c` — the project is multi-file now. Compiling
+  only main.c produces `undefined reference` LINKER errors (not compiler errors);
+  this has cost real time twice. Add `sdl2_image` to the pkg-config list once
+  sprites land.
+- If behavior doesn't match the source, CHECK THE EXE TIMESTAMP before debugging.
+  A stale `game.exe` has burned an hour on this project already.
 - `pkg-config --cflags --libs sdl2` yields `-Dmain=SDL_main ... -lSDL2main -lSDL2`.
   NOTE the `-Dmain=SDL_main`: on Windows SDL redefines `main`, so `main` MUST be
   declared exactly `int main(int argc, char *argv[])` or linking fails. (Teach
   this when he writes main — it's a classic beginner trap.)
 - Run command: `./game.exe` from the UCRT64 terminal at project root.
-- World size, screen size, target FPS: _TBD — Ian decides; record once set._
+- World size: 3000 x 2000. Window: 1280 x 720. FPS: vsync (no fixed timestep yet).
+- Player 20x30, tree 20x50, projectile 10x10, border walls 64 thick.
+- **Rendering scale DECIDED 2026-08-07 (revised): `SDL_RenderSetLogicalSize`
+  640x360`, 2x integer upscale into the same 1280x720 window.** The WINDOW stays
+  1280x720; only the drawing coordinate space becomes 640x360.
+  Consequences: all world/player/speed constants retune (see table below), and
+  `SDL_GetMouseState` returns WINDOW pixels so it MUST be converted with
+  `SDL_RenderWindowToLogical` before being used as a world coordinate.
+- Sprites drawn on a 16px grid at final display size (no downscaling in the art
+  tool): tree 32x48, player 16x24, projectile 6x6. Sprite size is INDEPENDENT of
+  hitbox size — a 32x48 tree sprite over a smaller trunk hitbox is correct.
+  Top-down convention: the tree's collision box should eventually shrink to just
+  the trunk base (~12x10) so the player walks behind the canopy.
 - Directory layout: `src/` for `.c`/`.h`, `assets/` for images later.
 - Coordinate system: world-space (game units) vs. screen-space (pixels) — the
   camera converts between them. (This will be a key concept to nail down early.)
+- **Struct convention (important, source of many bugs):** `xPos`/`yPos` (or
+  `.x`/`.y` on `BorderWall`) are WORLD coordinates and are the truth. The
+  `SDL_Rect body` holds SIZE permanently in `.w`/`.h`, but its `.x`/`.y` are
+  SCREEN scratch space that `renderWorld` overwrites every frame — and only for
+  objects that passed the cull test, so off-screen objects hold stale values.
+  Collision must ALWAYS use the world fields, never `body.x`/`body.y`.
+- Module layering (keep the dependency graph acyclic):
+  `collision.{c,h}` depends on nothing (just `<stdbool.h>`) — pure AABB math.
+  `levels.c` owns loops over the world's props/colliders and calls collision.
+  `main.c` wires it together. `projectile.c` knows nothing about `World` — it
+  takes plain ints, and the caller reads those out of the world.
+- Headers must include what they use, so each compiles standalone. Relying on a
+  transitive include (e.g. getting `bool` via `SDL.h`) breaks the moment an
+  unrelated include is removed.
 
 > Keep this section updated as decisions are made, so the constraints survive
 > across sessions. But never let "recording facts" become "writing code."
