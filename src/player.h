@@ -4,13 +4,12 @@
 #pragma once
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include "collision.h"
 
 
 typedef struct Player {
-        float xPos;
-        float yPos;
+        Body body;
         int health;
-        SDL_Rect body;
         SDL_Texture *pBodyImage;
 } Player;
 

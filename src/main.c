@@ -116,7 +116,7 @@ int main(int argc, char *argv[]){
     }
 
     //make the player
-    Player p1 = {.xPos = forest.width/2,  .yPos= forest.height/2, .health = 100, .body = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H }, .pBodyImage = playerTexture};
+    Player p1 = { .health = 100, .body = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H }, .pBodyImage = playerTexture};
     Camera cam = { .x=0, .y=0, .window_width = W_SCALE_WIDTH, .window_height = W_SCALE_HEIGHT };
 
     // make the forest world
@@ -188,8 +188,8 @@ int main(int argc, char *argv[]){
 
         SDL_SetRenderDrawColor(renderer, 128, 233, 91, 255);
         for(int i = 0; i < projectileCount; i++){
-            projectiles[i].body.x = projectiles[i].xPos - cam.x;
-            projectiles[i].body.y = projectiles[i].yPos - cam.y;
+            projectiles[i].body.x = projectiles[i].body.x - cam.x;
+            projectiles[i].body.y = projectiles[i].body.y - cam.y;
             SDL_RenderFillRect(renderer, &projectiles[i].body);
         }
         
@@ -221,31 +221,32 @@ int main(int argc, char *argv[]){
 //void helpers
 
 void keyDownEvent(const Uint8 *keyState, Player *p, float delta){
+    int prevX = p->body.x;
+    int prevY = p->body.y;
     if(keyState[SDL_SCANCODE_W]) { yDirectionMove(p, false, delta); }
     if(keyState[SDL_SCANCODE_A]) { xDirectionMove(p, false, delta); }
     if(keyState[SDL_SCANCODE_S]) { yDirectionMove(p, true, delta); }
     if(keyState[SDL_SCANCODE_D]) { xDirectionMove(p, true, delta); }
 
+
 }
 
 // creation of a new projectile for firing.
 Projectile fireProjectile(Player* p, int mouseX, int mouseY){
-    Vec2 projectileVector = getProjectileDeltaDistance(p->xPos, p->yPos, mouseX, mouseY);
+    Vec2 projectileVector = getProjectileDeltaDistance(p->body.x, p->body.y, mouseX, mouseY);
     Projectile shot = {
-        p->xPos,
-        p->yPos,
         PROJECTILE_SPEED,
         .xAimDirection = projectileVector.x,
         .yAimDirection = projectileVector.y,
-        .body = {0, 0, PROJECTILE_SIZE_W, PROJECTILE_SIZE_H},
+        .body = {p->body.x, p->body.y, PROJECTILE_SIZE_W, PROJECTILE_SIZE_H},
         .lifetime = 10,
     };
     return shot;
 }
 
 void setPlayerPhysicalPosition(Player *p, Camera *cam){
-    p->body.x = p->xPos - cam->x;
-    p->body.y = p->yPos - cam->y;
+    p->body.x = p->body.x - cam->x;
+    p->body.y = p->body.y - cam->y;
 }
 
 //float helpers

@@ -1,10 +1,10 @@
 #pragma once
 #include <stdbool.h>
-typedef struct Thing {
-    int left;
-    int right;
-    int top;
-    int bot;
-} Thing;
+typedef struct Body {
+    float x;
+    float y;
+    int w;
+    int h;
+} Body;
 
-bool intersecting(Thing *obj1, Thing *obj2);
+bool intersecting(Body *b1, Body *b2);

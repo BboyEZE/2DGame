@@ -2,17 +2,18 @@
 
 #pragma once
 #include <SDL2/SDL.h>
-#include "player.h"
 #include <stdbool.h>
 
+#include "collision.h"
+#include "player.h"
+
+
 typedef struct Projectile{
-    float xPos;
-    float yPos;
     int speed;
     float xAimDirection;
     float yAimDirection;
     float lifetime;
-    SDL_Rect body;
+    Body body;
 
 } Projectile;
 

@@ -34,19 +34,18 @@ SDL_Texture *tileTextures[4];
 
 
 void clampPlayerToWorld(Player *p, World *w){
-    int playerX = p->xPos;
-    int playerY = p->yPos;
-    int playerMaxX = p->xPos + p->body.w;
-    int playerMaxY = p->yPos + p->body.h;
+    int playerX = p->body.x;
+    int playerY = p->body.y;
+    int playerMaxX = p->body.x + p->body.w;
+    int playerMaxY = p->body.y + p->body.h;
 
-    if(playerX <= w->collider[0].x + w->collider[0].body.w) { p->xPos =  w->collider[0].x + w->collider[0].body.w + 1; }
-    if(playerY <= w->collider[1].y + w->collider[1].body.h) { p->yPos =  w->collider[1].y + w->collider[1].body.h + 1; }
-    if(playerMaxX >= w->collider[2].x) { p->xPos =  w->collider[2].x - 1 - p->body.w; }
-    if(playerMaxY >= w->collider[3].y) { p->yPos =  w->collider[3].y - 1 - p->body.h; }
+    if(playerX <= w->collider[0].x + w->collider[0].body.w) { p->body.x =  w->collider[0].x + w->collider[0].body.w + 1; }
+    if(playerY <= w->collider[1].y + w->collider[1].body.h) { p->body.y =  w->collider[1].y + w->collider[1].body.h + 1; }
+    if(playerMaxX >= w->collider[2].x) { p->body.x =  w->collider[2].x - 1 - p->body.w; }
+    if(playerMaxY >= w->collider[3].y) { p->body.y =  w->collider[3].y - 1 - p->body.h; }
 }
 
-bool projectileIntersection(int left, int right, int top, int bot, World * w){
-    Thing obj1 = { left, right, top, bot };
+bool projectileIntersection(Body projBody, World * w){
     for(int i = 0; i<w->propCount; i++){
         Thing obj2 = { w->props[i].xPos, w->props[i].xPos+w->props[i].body.w, w->props[i].yPos, w->props[i].yPos + w->props[i].body.h };
         if(intersecting(&obj1, &obj2)) return true;
@@ -166,16 +165,17 @@ int generateForest(World *w, int count, SDL_Renderer *renderer){
 
     if(createForestTextures(renderer) == 1) { return 1; }
 
-    //prop init
+    //prop init (trees)
     w->propCount = count;
     w->props = malloc(count * sizeof(Tree));
     if(w->props==NULL){
         fprintf(stderr, "ERROR: malloc function for the props did NOT work");
     }
+    // putting each tree into the array
     for(int i = 0; i < count; i++){
         int x = rand() % (w->width - TREE_W);
         int y = rand() % (w->height - TREE_H);
-        w->props[i] = (Tree) { .xPos = x, .yPos = y, .body = { .w = TREE_W, .h = TREE_H } };
+        w->props[i] = (Tree) { .xPos = x, .yPos = y, .body = { .w = TREE_W, .h = TREE_H }, .colisionBox = { .w=TREE_W, .h=TREE_H/4, .x= x, .y= (3)*(TREE_H/4) } };
     }
     
     //tiles init
