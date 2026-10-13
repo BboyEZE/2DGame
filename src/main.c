@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <stdint.h>
 
+#include "config.h"
 
 #include "player.h"
 #include "projectile.h"
@@ -17,33 +19,10 @@
 #include "camera.h"
 #include "world.h"
 #include "collision.h"
+#include "render.h"
 
 Uint32 lastTime = 0;
 
-/* PLAYER CONSTANTS */
-#define PLAYER_SIZE_W 16
-#define PLAYER_SIZE_H 24
-// pixels per second
-#define PLAYER_SPEED 150
-
-/* PROJECTILE CONSTANTS */
-#define PROJECTILE_SPEED 500
-// possible limit to the number of bullets
-#define MAX_SHOTS 20
-
-// miliseconds until next shot
-#define FIRE_INTERVAL 250
-#define PROJECTILE_SHOOTING_SPEED 0.2
-#define PROJECTILE_SIZE_W 6
-#define PROJECTILE_SIZE_H 6
-
-/* WINDOW CONSTANTS*/
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
-
-// scaling const
-#define W_SCALE_WIDTH 640
-#define W_SCALE_HEIGHT 360
 // Projectile list and count for number of projectiles
 Projectile projectiles[MAX_SHOTS];
 
@@ -52,15 +31,13 @@ int projectileCount = 0;
 float shotInterval = 0;
 float shootingSpeed = 0;
 
-SDL_Renderer *renderer = NULL;
-SDL_Window *gameWindow = NULL;
-SDL_Surface *playerSurface = NULL;
-SDL_Texture *playerTexture = NULL;
-
-
 //helper functions
-void keyDownEvent(const Uint8 *keyState, Player *p, float delta);
+void checkObsticleOverlap(Player *p, World *w, bool xDir, int prevLoc);
+void keyDownEvent(const Uint8 *keyState, Player *p, float delta, World* w);
+
 void setPlayerPhysicalPosition(Player *p, Camera* cam);
+
+
 
 float getDelta();
 
@@ -77,50 +54,33 @@ int main(int argc, char *argv[]){
     if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG){
         fprintf(stderr, "error: failed to init image. (%s)\n",IMG_GetError());
         status = 1;
-        goto cleanup_sdl;
-    }
-    gameWindow = SDL_CreateWindow("game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
-    if(gameWindow == NULL){
-        fprintf(stderr, "error: %s", SDL_GetError());
-        status = 1;
-        goto cleanup_img;
+        tearDownAllRender(1);
+        goto end;
     }
 
-    renderer = SDL_CreateRenderer(gameWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if(renderer == NULL){
+    status = initVideo();
+    if(status) { goto end; }
 
-        fprintf(stderr, "error: %s", SDL_GetError());
-        goto cleanup_window;
-    }
+    status = initGameWindow();
+    if(status) { goto end; }
+    status = initRenderer();
+    if(status) { goto end; }
+    status = makePlayerRender();
+    if(status) { goto end; }
 
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    SDL_RenderSetLogicalSize(renderer, W_SCALE_WIDTH, W_SCALE_HEIGHT);
-    SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
+    initWindowScaling();
 
     srand(time(NULL));
     
     int running = 1;
     SDL_Event e;
 
-    playerSurface = IMG_Load("assets/img/characters/knight_character.png");
-    if(playerSurface == NULL){
-        fprintf(stderr, "error: error at IMG_LOAD - %s", IMG_GetError());
-        goto cleanup_renderer;
-    }
-    SDL_Texture *playerTexture = SDL_CreateTextureFromSurface(renderer, playerSurface);
-    SDL_FreeSurface(playerSurface);
-    playerSurface = NULL;
-    if(playerTexture == NULL){
-        fprintf(stderr, "error: error at SDL create texture from surface - %s", SDL_GetError());
-        goto cleanup_renderer;
-    }
-
     //make the player
-    Player p1 = { .health = 100, .body = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H }, .pBodyImage = playerTexture};
+    Player p1 = { .health = 100, .body = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H }, .pBodyImage = 0,.collisionBox = { forest.width/2, forest.height/2, PLAYER_SIZE_W, PLAYER_SIZE_H/4}};
     Camera cam = { .x=0, .y=0, .window_width = W_SCALE_WIDTH, .window_height = W_SCALE_HEIGHT };
 
     // make the forest world
-    if(generateForest(&forest, 64, renderer) != 0){ goto cleanup_texture; }
+    if(generateForest(&forest, 64) != 0){ goto end; }
 
     // buffer to ensure print statements occur immediately.
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -147,21 +107,18 @@ int main(int argc, char *argv[]){
 
         //player movement
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
-        keyDownEvent(keyState, &p1, delta);
+        keyDownEvent(keyState, &p1, delta, world);
 
         //clamp the player position
         clampPlayerToWorld(&p1, world);
 
         //adjust the camera 
         updateCamera(&cam, &p1, world->width, world->height);
-
         //projectile movement
         int mouseX; int mouseY;
-        Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
         float logicalMouseX; float logicalMouseY;
-        SDL_RenderWindowToLogical(renderer, mouseX, mouseY, &logicalMouseX, &logicalMouseY);
-        mouseX = (int)(logicalMouseX);
-        mouseY = (int)(logicalMouseY);
+        Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+        setMouseVariableToMousePosition(&mouseX, &mouseY, &logicalMouseX, &logicalMouseY);
 
         if( (mouseState & SDL_BUTTON_LMASK) && projectileCount < MAX_SHOTS && canShootProjectile(delta)){
             int mouseWorldX = cam.x + mouseX;
@@ -173,7 +130,7 @@ int main(int argc, char *argv[]){
 
         int i = 0; 
         while(i<projectileCount){
-            bool projectileAlive = moveProjectile(&projectiles[i], delta, world->width, world->height, PROJECTILE_SPEED) && !projectileIntersection(projectiles[i].xPos, projectiles[i].xPos + projectiles[i].body.w, projectiles[i].yPos, projectiles[i].yPos + projectiles[i].body.h, world);
+            bool projectileAlive = moveProjectile(&projectiles[i], delta, world->width, world->height, PROJECTILE_SPEED) && !projectileIntersection(&projectiles[i].body, world);
             if(projectileAlive){
                 i++;
                 continue;
@@ -182,53 +139,73 @@ int main(int argc, char *argv[]){
             projectileCount--;
         }
 
-        SDL_RenderClear(renderer);
+        clearRenderer();
 
-        renderWorld(world, &cam, renderer);
+        renderWorld(world, &p1, &cam);
 
-        SDL_SetRenderDrawColor(renderer, 128, 233, 91, 255);
         for(int i = 0; i < projectileCount; i++){
-            projectiles[i].body.x = projectiles[i].body.x - cam.x;
-            projectiles[i].body.y = projectiles[i].body.y - cam.y;
-            SDL_RenderFillRect(renderer, &projectiles[i].body);
+            renderProjectile(&projectiles[i]);
         }
-        
+        /*
+
         // render the player body
         SDL_SetRenderDrawColor(renderer, 155,155,0,255);
         setPlayerPhysicalPosition(&p1, &cam);
         SDL_RenderCopy(renderer, playerTexture, NULL, &p1.body);
 
         // render the screen
-        SDL_SetRenderDrawColor(renderer, 0,0,0,255);
-        SDL_RenderPresent(renderer);
+
+        */
+        status = renderScreen();
+        if(status != 0) { goto end; }
+        
     }
     destoryForest(&forest);
 
-    cleanup_texture:
-    SDL_DestroyTexture(playerTexture);
-    cleanup_renderer:
-    SDL_DestroyRenderer(renderer);
-    cleanup_window:
-    SDL_DestroyWindow(gameWindow);
-    cleanup_img:
-    IMG_Quit();
-    cleanup_sdl:
-    SDL_Quit();
-
+    end: 
     return 1;
 }
 
 //void helpers
 
-void keyDownEvent(const Uint8 *keyState, Player *p, float delta){
+void keyDownEvent(const Uint8 *keyState, Player *p, float delta, World* w){
     int prevX = p->body.x;
     int prevY = p->body.y;
     if(keyState[SDL_SCANCODE_W]) { yDirectionMove(p, false, delta); }
-    if(keyState[SDL_SCANCODE_A]) { xDirectionMove(p, false, delta); }
     if(keyState[SDL_SCANCODE_S]) { yDirectionMove(p, true, delta); }
+
+    checkObsticleOverlap(p, w, false, prevY);
+
+    if(keyState[SDL_SCANCODE_A]) { xDirectionMove(p, false, delta); }
     if(keyState[SDL_SCANCODE_D]) { xDirectionMove(p, true, delta); }
 
+    checkObsticleOverlap(p, w, true, prevX);
+}
 
+void checkObsticleOverlap(Player *p, World *w, bool xDir, int prevLoc){  
+    Body *collider;
+    bool collisionFound = false;
+    if(w->props){
+        for(int i = 0; i < w->propCount; i++){
+            if(intersecting(&p->collisionBox, &w->props[i].collisionBox)) { 
+                collider = &w->props[i].collisionBox; 
+                collisionFound = true; 
+            }
+            
+        }
+    }
+
+    if(collisionFound){
+        if(!xDir){
+            if(prevLoc + p->body.y < collider->y) { p->body.y = collider->y - p->body.h; }
+            else { p->body.y = collider->y + collider->h; }
+        } else {
+            if(prevLoc + p->body.x < collider->x) { p->body.x = collider->x - p->body.w; }
+            else { p->body.x = collider->x + collider->w; }
+        }
+    }
+
+    
 }
 
 // creation of a new projectile for firing.

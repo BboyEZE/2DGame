@@ -3,8 +3,8 @@
 #include "camera.h"
 
 void updateCamera(Camera* camera, Player* player, const int worldW, const int worldH){
-    camera->x = player->xPos - camera->window_width / 2;
-    camera->y = player->yPos - camera->window_height / 2;
+    camera->x = player->body.x - camera->window_width / 2;
+    camera->y = player->body.y - camera->window_height / 2;
     cameraAdjustWorld(camera, worldW, worldH);
 }
 

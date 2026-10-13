@@ -11,14 +11,11 @@
 
 
 typedef struct Tree {
-    int xPos;
-    int yPos;
     Body body;
+    Body collisionBox;
 } Tree;
 
 typedef struct BorderWall {
-    int x;
-    int y;
     Body body;
 } BorderWall;
 
@@ -41,10 +38,10 @@ typedef struct World {
 void clampPlayerToWorld(Player *p,World *w);
 void destoryForest(World *w);
 
-void renderWorld(World *w, Camera *c, SDL_Renderer* renderer);
+void renderWorld(World *w, Player *p, Camera *c);
 
-int generateForest(World *w, int count, SDL_Renderer* renderer);
+int generateForest(World *w, int count);
 
-bool projectileIntersection(int left, int right, int top, int bot, World * w);
+bool projectileIntersection(Body *projBody, World * w);
 
 extern World forest;

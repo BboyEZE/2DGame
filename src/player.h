@@ -10,7 +10,8 @@
 typedef struct Player {
         Body body;
         int health;
-        SDL_Texture *pBodyImage;
+        int pBodyImage;
+        Body collisionBox;
 } Player;
 
 void xDirectionMove(Player *p, bool positive, float delta);

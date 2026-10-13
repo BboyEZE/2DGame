@@ -99,12 +99,16 @@ don't write. If a request is ambiguous, assume he wants guidance, not code.
 - Directory layout: `src/` for `.c`/`.h`, `assets/` for images later.
 - Coordinate system: world-space (game units) vs. screen-space (pixels) — the
   camera converts between them. (This will be a key concept to nail down early.)
-- **Struct convention (important, source of many bugs):** `xPos`/`yPos` (or
-  `.x`/`.y` on `BorderWall`) are WORLD coordinates and are the truth. The
-  `SDL_Rect body` holds SIZE permanently in `.w`/`.h`, but its `.x`/`.y` are
-  SCREEN scratch space that `renderWorld` overwrites every frame — and only for
-  objects that passed the cull test, so off-screen objects hold stale values.
-  Collision must ALWAYS use the world fields, never `body.x`/`body.y`.
+- **Struct convention (REFACTORED by 2026-10-08):** objects now use a custom
+  `Body { float x, y; int w, h; }` (in `collision.h`) instead of `xPos`/`yPos` +
+  `SDL_Rect`. `Body.x/.y` are WORLD coordinates and are the truth — they must
+  NEVER be overwritten with screen coords. Screen position (`world - cam`) is
+  computed into a temporary `SDL_Rect` at render time only
+  (`createSDLRectBody` in render.c is the natural place).
+- **Units:** 1 world unit == 1 logical pixel (no zoom). The camera is already in
+  logical/world units (`window_width = W_SCALE_WIDTH`). Only WINDOW pixels
+  (1280x720, from `SDL_GetMouseState`) differ; `SDL_RenderWindowToLogical` is
+  the one bridge. So `mouseWorld = cam + logicalMouse`.
 - Module layering (keep the dependency graph acyclic):
   `collision.{c,h}` depends on nothing (just `<stdbool.h>`) — pure AABB math.
   `levels.c` owns loops over the world's props/colliders and calls collision.

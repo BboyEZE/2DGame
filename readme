@@ -6,8 +6,12 @@ Here are notes for myself for how to setup the game.
 2) cd into the game folder
 3) compile the game using a call like -- gcc src/main.c src/player.c -o game.exe $(pkg-config --cflags --libs sdl2)
     - note: The compile call is gcc {each .c file with the exact location path} -o (output) {output name}
-4) run the game by doing ./game.exe
 
+    [ new compile method 'gcc -Wall -g -O0 src/*.c -o game.exe $(pkg-config --cflags --libs sdl2 sdl2_image)' ]
+
+
+4) run the game by doing ./game.exe
+    [ new run method 'gdb ./gamexe' then 'run' in the terminal popup]
 
 
 
